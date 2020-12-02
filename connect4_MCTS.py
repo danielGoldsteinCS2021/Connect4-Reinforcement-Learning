@@ -1,6 +1,6 @@
 import queue
 from math import sqrt, log
-from random import sample
+from random import choice
 
 '''
 This file contains the template for all methods we will need to implement 
@@ -64,6 +64,7 @@ class ConnectFour:
             self.turn = self.player2
         else:
             self.turn = self.player1
+        return self.turn
 
     # determines if players streak 'connection' has been broken
     def streakHandler(self, playerToCompare, p1_count, p2_count):
@@ -201,5 +202,77 @@ class ConnectFour:
 
 
 '''
-File is to be continued, we also need a Node/tree class
+This class is for using the MCTS algorithm on our connect4 class defined above
 '''
+
+
+class Node(ConnectFour):
+    def __init__(self, daddyNode, action, state, player, game=None):
+        super().__init__()  # for connect4 class
+        self.game = game
+        self.parentNode = daddyNode
+        self.childNodes = dict.fromkeys(self.actions(state))  # creates dict keys that are made of actions.
+        self.action = action
+        self.state = state
+        self.player = player
+        self.visits = 0  # needed for MCTS
+        self.value = 0  # needed for MCTS
+
+    # returns the weight of the node - needed for MCTS
+    def nodeWeightForVisits(self):
+        return self.value / self.visits if self.visits > 0 else 0
+
+    # does the computation of the formula needed to determine the search weight
+    def mctsWeightFormula(self, c):
+        return self.nodeWeightForVisits() + c * sqrt(2 * log(self.parentNode.visits) / self.visits)
+
+    # ensures no child nodes are set to None, i.e that have all been expanded
+    def allChildrenExpanded(self):
+        return None not in self.childNodes.values()
+
+    # expands nodes that haven't been expanded yet, needed for expansion step in MCTS
+    def expandNode(self):
+        try:
+            action = list(self.children.keys())[list(self.children.values()).index(None)]  # make readable
+        except ValueError:
+            pass
+        newState = self.resultingState(self.state, action, self.player)
+        nextPlayer = self.next_player()  # might have an issue where the program doesn't know who the player is
+        childNode = Node(self, action, newState, nextPlayer)
+        self.childNodes[action] = childNode  # map our action to a new childNode
+        return childNode  # return expanded node
+
+    # returns the value for the optimal child node, all nodes must be fully expanded.
+    def optimalChildNode(self, cVal=1/sqrt(2)):
+        return max(self.childNodes.values(), key=lambda n: n.mctsWeightFormula(cVal)) \
+            if self.allChildrenExpanded() else None
+
+    # returns the action of that must be taken in order to reach the optimal childNode
+    def optimalAction(self, cVal=1/sqrt(2)):
+        return self.optimalChildNode(cVal).action
+
+    # this simulates the game from it's current state to a terminal state
+    #
+    def simulate(self):
+        player = self.player
+        state = self.state
+        while not self.isTerminalState(state):  # while game isn't over
+            nextAction = choice(self.actions(state))
+            state = self.resultingState(state, nextAction, player)
+            player = self.player1 if player == self.player2 else self.player2
+        return self.outcome(state, player)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
