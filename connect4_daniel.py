@@ -1,407 +1,472 @@
-#!/usr/bin/env python
-
-# Alfredo de la Fuente 2017
-
-## GUI Toolkit
-from Tkinter import *
-import tkFont
-import random
-import math
-import copy
-import time
-
-dx = [1, 1, 1, 0]
-dy = [1, 0, -1, 1]
+"""
+A collection of classes and functions for playing certain types of
+games. Specifically, an implementation of the MCTS algorithm.
+"""
+import random, queue
+from math import sqrt, log
+from random import sample
 
 
-## Game basic dynamics
-class Board(object):
+class Game(object):
+    """
+    Base class for multi-player adversarial games.
+    """
 
-    def __init__(self, board, last_move=[None, None]):
-        self.board = board
-        self.last_move = last_move
+    def actions(self, state):
+        raise Exception('Method must be overridden.')
 
-    def tryMove(self, move):
-        # Takes the current board and a possible move specified
-        # by the column. Returns the appropiate row where the
-        # piece and be located. If it's not found it returns -1.
+    def result(self, state, action, player):
+        raise Exception('Method must be overridden.')
 
-        if (move < 0 or move > 7 or self.board[0][move] != 0):
-            return -1;
+    def terminal(self, state):
+        raise Exception('Method must be overridden.')
 
-        for i in range(len(self.board)):
-            if (self.board[i][move] != 0):
-                return i - 1
-        return len(self.board) - 1
+    def next_player(self, player):
+        raise Exception('Method must be overridden.')
 
-    def terminal(self):
-        # Returns true when the game is finished, otherwise false.
-        for i in range(len(self.board[0])):
-            if (self.board[0][i] == 0):
-                return False
-        return True
+    def outcome(self, state, player):
+        raise Exception('Method must be overridden.')
+# i can dump the game class as all the methods need to be overwritten anyways
 
-    def legal_moves(self):
-        # Returns the full list of legal moves that for next player.
-        legal = []
-        for i in range(len(self.board[0])):
-            if (self.board[0][i] == 0):
-                legal.append(i)
+class ConnectFour(Game):
+    """
+    Implementation of the game Connect Four, modeled as a tree search problem.
+    The state is a tuple of tuples. The last element is the player whose turn
+    it is, the rest of the elements are tuples that represent columns in the
+    game board. The first element in each corresponds to the bottom slot in the
+    game board. If a slot is not occupied then it simply is not present in the
+    state representation.
+    ( (), (), (), (), 1 ) Four empty columns, player 1's turn
+    An action is just an integer representing a column in the game board
+    (state). The player is taken from the state and the move is attributed to
+    this player.
+    """
+    PLAYERS = (1, 2)
+    HEIGHT = 4
+    WIDTH = 4
 
-        return legal
+    TARGET = 3
 
-    def next_state(self, turn):
-        # Retuns next state
-        aux = copy.deepcopy(self)
-        moves = aux.legal_moves()
-        if len(moves) > 0:
-            ind = random.randint(0, len(moves) - 1)
-            row = aux.tryMove(moves[ind])
-            aux.board[row][moves[ind]] = turn
-            aux.last_move = [row, moves[ind]]
-        return aux
+    VALUE_WIN = 1
+    VALUE_LOSE = -1
+    VALUE_DRAW = 0
 
-    def winner(self):
-        # Takes the board as input and determines if there is a winner.
-        # If the game has a winner, it returns the player number (Computer = 1, Human = -1).
-        # If the game is still ongoing, it returns zero.
+    def __init__(self, players=PLAYERS, height=HEIGHT, width=WIDTH, target=TARGET):
+        self.players = players
+        self.height = height
+        self.width = width
+        self.target = target
 
-        x = self.last_move[0]
-        y = self.last_move[1]
+    def _legal(self, state, action):
+        if action not in range(len(state)):
+            raise Exception('Invalid action: out of range')
+        return len(state[action]) < self.height
 
-        if x == None:
-            return 0
-
-        for d in range(4):
-
-            h_counter = 0
-            c_counter = 0
-
-            for k in range(-3, 4):
-
-                u = x + k * dx[d]
-                v = y + k * dy[d]
-
-                if u < 0 or u >= 6:
-                    continue
-
-                if v < 0 or v >= 7:
-                    continue
-
-                if self.board[u][v] == -1:
-                    c_counter = 0
-                    h_counter += 1
-                elif self.board[u][v] == 1:
-                    h_counter = 0
-                    c_counter += 1
-                else:
-                    h_counter = 0
-                    c_counter = 0
-
-                if h_counter == 4:
-                    return -1
-
-                if c_counter == 4:
-                    return 1
-
-        return 0
-
-
-## Monte Carlo Tree Search
-
-class Node():
-    # Data structure to keep track of our search
-    def __init__(self, state, parent=None):
-        self.visits = 1
-        self.reward = 0.0
-        self.state = state
-        self.children = []
-        self.children_move = []
-        self.parent = parent
-
-    def addChild(self, child_state, move):
-        child = Node(child_state, self)
-        self.children.append(child)
-        self.children_move.append(move)
-
-    def update(self, reward):
-        self.reward += reward
-        self.visits += 1
-
-    def fully_explored(self):
-        if len(self.children) == len(self.state.legal_moves()):
+    def _streak(self, state, player, start, delta, length=0):
+        # Check for out-of-bounds at low end b/c of wrapping
+        row, column = start
+        if row < 0 or column < 0:
+            return False
+        try:
+            piece = state[column][row]
+        except IndexError:
+            return False
+        if piece != player:
+            return False
+        # Current slot is owned by the player
+        length += 1
+        if length == self.target:  # Streak is already long enough
             return True
+        # Continue searching,
+        drow, dcolumn = delta
+        return self._streak(
+            state,
+            player,
+            (row + drow, column + dcolumn),
+            delta,
+            length
+        )
+
+    def pretty_state(self, state, escape=False):
+        output = ''
+        for j in range(self.width):
+            output += ' ' + str(j)
+        output += ' '
+        if escape:
+            output += '\\n'
+        else:
+            output += '\n'
+        i = self.height - 1
+        while i >= 0:
+            for column in state:
+                if len(column) > i:
+                    output += '|' + str(column[i])
+                else:
+                    output += '| '
+            output += '|'
+            if escape:
+                output += '\\n'
+            else:
+                output += '\n'
+            i -= 1
+        return output
+
+    def actions(self, state):
+        return tuple(
+            [i for i, _ in enumerate(state) if self._legal(state, i)]
+        )
+
+    def result(self, state, action, player):
+        if not self._legal(state, action):
+            raise Exception('Illegal action')
+        newstate = []
+        for index, column in enumerate(state):
+            if index == action:
+                newstate.append(column + (player,))
+            else:
+                newstate.append(column)
+        return tuple(newstate)
+
+    def terminal(self, state):
+        # All columns full means we are done
+        if all([len(column) == self.height for column in state]):
+            return True
+        # A winner also means we are done
+        if self.outcome(state, self.players[0]) != self.VALUE_DRAW:
+            return True
+        # Board is not full and no one has won so the game continues
         return False
 
-
-def MTCS(maxIter, root, factor):
-    for inter in range(maxIter):
-        front, turn = treePolicy(root, 1, factor)
-        reward = defaultPolicy(front.state, turn)
-        backup(front, reward, turn)
-
-    ans = bestChild(root, 0)
-    print[(c.reward / c.visits)
-    for c in ans.parent.children ]
-    return ans
-
-
-def treePolicy(node, turn, factor):
-    while node.state.terminal() == False and node.state.winner() == 0:
-        if (node.fully_explored() == False):
-            return expand(node, turn), -turn
+    def next_player(self, player):
+        if player not in self.players:
+            raise Exception('Invalid player')
+        index = self.players.index(player)
+        if index < len(self.players) - 1:
+            return self.players[index + 1]
         else:
-            node = bestChild(node, factor)
-            turn *= -1
-    return node, turn
+            return self.players[0]
+
+    def outcome(self, state, player):
+        for ci, column in enumerate(state):
+            for ri, marker in enumerate(column):
+                if any((
+                        self._streak(state, marker, (ri, ci), (1, 0)),
+                        self._streak(state, marker, (ri, ci), (0, 1)),
+                        self._streak(state, marker, (ri, ci), (1, 1)),
+                        self._streak(state, marker, (ri, ci), (1, -1)),
+                )):
+                    # A winner was found
+                    if marker == player:
+                        return self.VALUE_WIN
+                    else:
+                        return self.VALUE_LOSE
+        # No winner was found
+        return self.VALUE_DRAW
 
 
-def expand(node, turn):
-    tried_children_move = [m for m in node.children_move]
-    possible_moves = node.state.legal_moves()
+class Node(object):
+    COLORS = {
+        1: 'red',
+        2: 'yellow',
+        3: 'orange',
+        4: 'green',
+        5: 'blue',
+        6: 'purple'
+    }
 
-    for move in possible_moves:
-        if move not in tried_children_move:
-            row = node.state.tryMove(move)
-            new_state = copy.deepcopy(node.state)
-            new_state.board[row][move] = turn
-            new_state.last_move = [row, move]
-            break
+    def __init__(self, parent, action, state, player, game=None):
+        if parent is None and game is None:
+            raise Exception('No game provided')
+        # Game
+        self.game = game or parent.game
+        # Structure
+        self.parent = parent
+        self.children = dict.fromkeys(self.game.actions(state))
+        # Tree data
+        self.action = action
+        self.state = state
+        # Search meta data
+        self.player = player
+        self.visits = 0
+        self.value = 0.0
 
-    node.addChild(new_state, move)
-    return node.children[-1]
-
-
-def bestChild(node, factor):
-    bestscore = -10000000.0
-    bestChildren = []
-    for c in node.children:
-        exploit = c.reward / c.visits
-        explore = math.sqrt(math.log(2.0 * node.visits) / float(c.visits))
-        score = exploit + factor * explore
-        if score == bestscore:
-            bestChildren.append(c)
-        if score > bestscore:
-            bestChildren = [c]
-            bestscore = score
-    return random.choice(bestChildren)
-
-
-def defaultPolicy(state, turn):
-    while state.terminal() == False and state.winner() == 0:
-        state = state.next_state(turn)
-        turn *= -1
-    return state.winner()
-
-
-def backup(node, reward, turn):
-    while node != None:
-        node.visits += 1
-        node.reward -= turn * reward
-        node = node.parent
-        turn *= -1
-    return
-
-
-## GUI Configuration
-class Info(Frame):
-    ## Message in the top of screen
-    def __init__(self, master=None):
-        Frame.__init__(self)
-        self.configure(width=500, height=100, bg="white")
-        police = tkFont.Font(family="Arial", size=36, weight="bold")
-        self.t = Label(self, text="Connect4 AI", font=police, bg="white")
-        self.t.grid(sticky=NSEW, pady=20)
-
-
-class Point(object):
-    ## Each one of the circles in the board
-    def __init__(self, x, y, canvas, color="white"):
-        self.canvas = canvas
-        self.x = x
-        self.y = y
-        self.color = color
-        self.turn = 1
-        self.r = 30
-        self.point = self.canvas.create_oval(self.x + 10, self.y + 10, self.x + 61, self.y + 61, fill=color,
-                                             outline="blue")
-
-    def setColor(self, color):
-        self.canvas.itemconfigure(self.point, fill=color)
-        self.color = color
-
-
-class Terrain(Canvas):
-    ## Board visual representation
-    def __init__(self, master=None):
-
-        Canvas.__init__(self)
-        self.configure(width=500, height=400, bg="blue")
-
-        self.p = []
-        self.winner = False
-
-        board = []
-        for i in range(6):
-            row = []
-            for j in range(7):
-                row.append(0)
-            board.append(row)
-
-        self.b = Board(board)
-        self.last_bstate = self.b
-
-        for i in range(0, 340, int(400 / 6)):
-            spots = []
-            for j in range(0, 440, int(500 / 7)):
-                spots.append(Point(j, i, self))
-
-            self.p.append(spots)
-
-        self.bind("<Button-1>", self.action)
-
-    def reloadBoard(self, i=None, j=None, val=None, bstate=None):
+    def __iter__(self):
         """
-        Reloads the board colors and content.
-        Uses recursive upload for more complex cases (e.g. step back).
-        [i,j,val] or [bstate] can be provided (but not simpultaneously).
-        If no i, j, values or bstate are provided, it updates only colors.
-        I bstate is present, updates the board values first and then colors.
-        If i and j is present but no val, then updates the color of only one cell.
-        If i and j and val are present, updates the matrix and the color.
+        A generator function. Does a pre-order traversal over the nodes
+        in the tree without using recursion.
         """
-        if i == None:
-            if bstate != None:
-                self.b = copy.deepcopy(bstate)
-            for i in range(6):
-                for j in range(7):
-                    self.reloadBoard(i, j, val=None, bstate=None)
-        elif val == None:
-            if self.b.board[i][j] == -1:
-                self.p[i][j].setColor("yellow")
-            elif self.b.board[i][j] == 1:
-                self.p[i][j].setColor("red")
-            elif self.b.board[i][j] == 0:
-                self.p[i][j].setColor("white")
-        else:
-            self.b.board[i][j] = val
-            self.reloadBoard(i, j)
+        active = queue.Queue()
+        active.put(self)
+        while active.qsize() > 0:
+            next = active.get()
+            for _, child in next.children.items():
+                if child is not None:
+                    active.put(child)
+            yield next
 
-    def findBestMove(self, factor):
-        # Returns the best move using MonteCarlo Tree Search
-        o = Node(self.b)
-        bestMove = MTCS(3000, o, factor)
-        self.b = copy.deepcopy(bestMove.state)
+    def __len__(self):
+        """
+        Returns the number of nodes in the tree. This requires a
+        traversal, so it has O(n) running time.
+        """
+        n = 0
+        for node in self.traverse():
+            n += 1
+        return n
 
-        self.reloadBoard()
+    @property
+    def weight(self):
+        """
+        The weight of the current node.
+        """
+        if self.visits == 0:
+            return 0
+        return self.value / float(self.visits)
 
-    def action(self, event):
+    def search_weight(self, c):
+        """
+        Compute the UCT search weight function for this node. Defined as:
+            w = Q(v') / N(v') + c * sqrt(2 * ln(N(v)) / N(v'))
+        Where v' is the current node and v is the parent of the current node,
+        and Q(x) is the total value of node x and N(x) is the number of visits
+        to node x.
+        """
+        return self.weight + c * sqrt(2 * log(self.parent.visits) / self.visits)
 
-        self.last_bstate = copy.deepcopy(self.b)
+    def actions(self):
+        """
+        The valid actions for the current node state.
+        """
+        return self.game.actions(self.state)
 
-        # Human Action
-        if not self.winner:
-            col = int(event.x / 71)
-            ok = False
-            row = self.b.tryMove(col)
+    def result(self, action):
+        """
+        The state resulting from the given action taken on the current node
+        state by the node player.
+        """
+        return self.game.result(self.state, action, self.player)
 
-            if row == -1:
-                return
+    def terminal(self):
+        """
+        Whether the current node state is terminal.
+        """
+        return self.game.terminal(self.state)
+
+    def next_player(self):
+        """
+        Returns the next game player given the current node's player.
+        """
+        return self.game.next_player(self.player)
+
+    def outcome(self, player=None):
+        """
+        Returns the game outcome for the given player (default is the node's
+        player) for the node state.
+        """
+        p = player or self.player
+        return self.game.outcome(self.state, p)
+
+    def fully_expanded(self):
+        """
+        Whether all child nodes have been expanded (instantiated). Essentially
+        this just checks to see if any of its children are set to None.
+        """
+        return not None in self.children.values()
+
+    def expand(self):
+        """
+        Instantiates one of the unexpanded children (if there are any,
+        otherwise raises an exception) and returns it.
+        """
+        try:
+            action = list(self.children.keys())[list(self.children.values()).index(None)]
+        except ValueError:
+            raise Exception('Node is already fully expanded')
+
+        state = self.game.result(self.state, action, self.player)
+        player = self.game.next_player(self.player)
+
+        child = Node(self, action, state, player)
+        self.children[action] = child
+        return child
+
+    def best_child(self, c=1 / sqrt(2)):
+        if not self.fully_expanded():
+            raise Exception('Node is not fully expanded')
+
+        return max(self.children.values(), key=lambda x: x.search_weight(c))
+
+    def best_action(self, c=1 / sqrt(2)):
+        """
+        Returns the action needed to reach the best child from the current
+        node.
+        """
+        return self.best_child(c).action
+
+    def max_child(self):
+        """
+        Returns the child with the highest value.
+        """
+        return max(self.children.values(), key=lambda x: x.weight)
+
+    def simulation(self, player):
+        """
+        Simulates the game to completion, choosing moves in a uniformly random
+        manner. The outcome of the simulation is returns as the state value for
+        the given player.
+        """
+        st = self.state
+        pl = self.player
+        while not self.game.terminal(st):
+            action = sample(self.game.actions(st), 1)[0]
+            st = self.game.result(st, action, pl)
+            pl = self.game.next_player(pl)
+        return self.game.outcome(st, player)
+
+    def dot_string(self, value=False, prettify=lambda x: x):
+        """
+        Returns the tree rooted at the current node as a string
+        in dot format. Each node is labeled with its state, which
+        is first run through prettify. If value is True, then
+        the value is included in the node label.
+        """
+        output = ''
+        output += 'digraph {\n'
+        for node in self:
+            # Define the node
+            name = prettify(node.state)
+            if value:
+                name += '%s\\n' % node.value
+            color = self.COLORS[node.player]
+            output += '\t"%s" [style="filled", fillcolor="%s"]\n' % (
+                name, color
+            )
+            # No edge into the root node
+            if node.parent is None:
+                continue
+            # Add edge from node parent to node
+            pname = prettify(node.parent.state)
+            if value:
+                pname += '%s\\n' % node.parent.value
+            output += '\t"%s" -> "%s"\n' % (pname, name)
+        output += '}'
+        return output
+
+
+def mcts_uct(game, state, player, budget):
+    """
+    Implementation of the UCT variant of the MCTS algorithm.
+    """
+    root = Node(None, None, state, player, game)
+    while budget:
+        budget -= 1
+        # Tree Policy
+        child = root
+        while not child.terminal():
+            if not child.fully_expanded():
+                child = child.expand()
+                break
             else:
-                self.reloadBoard(row, col, -1)
-                self.b.last_move = [row, col]
-                ok = True
+                child = child.best_child()
+        # Default Policy
+        delta = child.simulation(player)
+        # Backup
+        while not child is None:
+            child.visits += 1
+            child.value += delta
+            child = child.parent
 
-            if ok:
-                info.t.config(text="Computer's Turn")
-
-            result = self.b.winner()
-
-            # Check if there is a winner or if it ended in a draw
-            if result == 1:
-                info.t.config(text="You lost!")
-                self.winner = True
-            elif result == -1:
-                info.t.config(text="You won!")
-                self.winner = True
-            elif self.b.terminal():
-                info.t.config(text="Draw")
-                self.winner = True
-
-        self.update()
-
-        # Computer Action
-        if not self.winner:
-
-            # self.findBestMove(1.0/math.sqrt(2.0))
-            self.findBestMove(2.0)
-            ok = True
-
-            if ok:
-                info.t.config(text="Your turn")
-
-            result = self.b.winner()
-
-            if result == 1:
-                info.t.config(text="You lost!")
-                self.winner = True
-            elif result == -1:
-                info.t.config(text="You won!")
-                self.winner = True
-            elif self.b.terminal():
-                info.t.config(text="Draw")
-                self.winner = True
-
-        self.update()
-
-    def step_back(self):
-        """
-        Single human and computer step back
-        """
-        self.winner = False
-        info.t.config(text="Your turn")
-        self.reloadBoard(bstate=self.last_bstate)
-        self.update()
+    return root.best_action(c=0)
 
 
-if __name__ == "__main__":
-    ## Game execution
-    root = Tk()
-    root.geometry("500x550")
-    root.title("Connect 4 AI Bot")
-    root.configure(bg="white")
-    root.minsize(500, 600)
-    root.maxsize(500, 600)
+def full_tree(game, state, player):
+    """
+    Creates a full game tree in which player moves first. The traversal is done
+    in breadth-first order. The return value is the root node.
+    """
+    active = queue.Queue()
+    root = Node(None, None, state, player)
+    active.put(root)
 
-    info = Info(root)
-    info.grid(row=0, column=0)
-
-    t = Terrain(root)
-    t.grid(row=1, column=0)
-
-
-    def restart():
-        global info
-        info.t.config(text="")
-
-        info = Info(root)
-        info.grid(row=0, column=0)
-
-        t = Terrain(root)
-        t.grid(row=1, column=0)
+    current = None
+    while active.qsize() > 0:
+        current = active.get()
+        # Assign value if this is a terminal node
+        if game.terminal(current.state):
+            continue
+        # Explore children otherwise
+        for action in game.actions(current.state):
+            nstate = game.result(current.state, action, current.player)
+            nplayer = game.next_player(current.player)
+            node = Node(current, action, nstate, nplayer)
+            current.children[action] = node
+            active.put(node)
+    return root
 
 
-    def step_back():
-        global t
-        t.step_back()
+def minimax(game, state, player):
+    """
+    Applies the Minimax algorithm to the given game. Returns the
+    root node with values assigned to each node in the game tree.
+    """
+    active = []
+
+    root = full_tree(game, state, player)
+    for node in root:
+        active.append(node)
+
+    current = None
+    while active:
+        current = active.pop()
+        # Leaf (terminal) node
+        if game.terminal(current.state):
+            current.value = game.outcome(current.state, player)
+            continue
+        # Interior or root node
+        values = tuple([i.value for i in current.children.values()])
+        if current.player == player:
+            current.value = max(values)
+        else:
+            current.value = min(values)
+
+    return root
 
 
-    def close():
-        root.destroy()
+def mcts(game, state, player, n):
+    """
+    Implementation of the UCT variant of the Monte Carlo Tree Search algorithm.
+    """
+    root = Node(None, None, state, player)
+    unexplored = queue.Queue()
+    unexplored.put(root)
 
+    for _ in range(n):
+        # Quit early if we are out of nodes
+        if unexplored.qsize() == 0:
+            break
+        # Add the new node to the tree
+        current = unexplored.get()
+        if current.parent is not None:
+            current.parent.children[current.action] = current
+        # Add the newly discovered nodes to the queue
+        for action in game.actions(current.state):
+            nstate = game.result(current.state, action, current.player)
+            nplayer = game.next_player(current.player)
+            node = Node(current, action, nstate, nplayer)
+            unexplored.put(node)
+        # Simulate the rest of the game from the current node
+        cstate = current.state
+        cplayer = current.player
+        while not game.terminal(cstate):
+            caction = random.choice(game.actions(cstate))
+            cstate = game.result(cstate, caction, cplayer)
+            cplayer = game.next_player(cplayer)
+        simvalue = game.outcome(cstate, player)
+        # Back simulation value up to the root
+        backup = current
+        while backup is not None:
+            backup.value += simvalue
+            backup.visits += 1
+            backup = backup.parent
 
-    Button(root, text="Try again (?)", command=restart).grid(row=3, column=0, pady=5)
-    Button(root, text="Step back", command=step_back).grid(row=2, column=0, pady=2)
-    Button(root, text="Exit", command=close).grid(row=4, column=0, pady=2)
-
-    root.mainloop()
+    return root
