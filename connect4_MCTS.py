@@ -7,10 +7,20 @@ This file contains the template for all methods we will need to implement
 to have our connect4 game
 '''
 
+'''
+States are represented as a tuple of tuples. For our game we will have each tuple 
+have a max of self.height many integers.. Examples of states 
+((), (), (), (), (), (), ()) - this will be our initial state
+((x), (), (), (), (), (), ()) - state after first move
+((x), (o, o, o, o), (x, x, x), (), (), (), ()) - winner is o
+'''
+
+
 class ConnectFour:
     # represents possible actions we can take
     def actions(self, state):
-        return
+        possibleActions = [i for i in range(self.width) if len(state[i]) < self.height]
+        return tuple(possibleActions)
 
     # creates and returns the resulting state
     def result(self, state, action, player):
