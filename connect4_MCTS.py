@@ -17,14 +17,30 @@ have a max of self.height many integers.. Examples of states
 
 
 class ConnectFour:
+    def __init__(self):
+        self.player1 = 'x'
+        self.player2 = 'o'
+        self.height = 6
+        self.width = 7
+        self.connectNumber = 4
+        self.win = 1
+        self.lose = -1
+        self.draw = 0
+
     # represents possible actions we can take
     def actions(self, state):
         possibleActions = [i for i in range(self.width) if len(state[i]) < self.height]
         return tuple(possibleActions)
 
     # creates and returns the resulting state
-    def result(self, state, action, player):
-        pass
+    def resultingState(self, state, action, player):
+        returnState = []
+        for i, col in enumerate(state):
+            if i == action:
+                returnState.append(col + (player,))
+            else:
+                returnState.append(col)
+        return returnState
 
     # returns true and false based on if we reached a terminal state
     def terminal(self, state):
@@ -38,15 +54,7 @@ class ConnectFour:
     def outcome(self, state, player):
         pass
 
-    def __init__(self):
-        self.player1 = 'x'
-        self.player2 = 'o'
-        self.height = 6
-        self.width = 7
-        self.connectNumber = 4
-        self.win = 1
-        self.lose = -1
-        self.draw = 0
+
 
     # THIS CODE NEEDS TO BE CHANGED - however it just prints the game board pretty not needed for logic of game
     def pretty_state(self, state, escape=False):
