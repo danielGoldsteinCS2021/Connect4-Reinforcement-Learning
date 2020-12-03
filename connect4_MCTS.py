@@ -40,7 +40,7 @@ class ConnectFour:
     def isTerminalState(self, state):
         if all([len(col) == self.height for col in state]):
             return True  # board is full
-        if self.gameOutcome(state, self.player1) != self.tie:
+        if self.gameOutcome(state, self.player1) == self.win or self.gameOutcome(state, self.player1) == self.lose:
             return True  # there is a winner, so we're in a terminal state
         return False
 
@@ -67,8 +67,8 @@ class ConnectFour:
 
     # Determines if game has ended based on up and down (vertical) connections
     def isGameOverUpDown(self, state):
-        p1_count, p2_count = 0, 0
         for colIdx in range(self.width):  # for each column
+            p1_count, p2_count = 0, 0
             for i in range(self.height):  # for each row
                 try:
                     playerAtCurPos = state[colIdx][i]
@@ -83,9 +83,8 @@ class ConnectFour:
 
     # Determines if game has ended based on left and right connections
     def isGameOverLeftRight(self, state):
-        p1_count = 0
-        p2_count = 0
         for rowIdx in range(self.height):  # traverse by row
+            p1_count, p2_count = 0, 0
             for i in range(self.width):  # traverse by column
                 try:
                     valueAtCurPos = state[i][rowIdx]
@@ -161,9 +160,9 @@ class ConnectFour:
             return self.win
         if gameOver is not None:  # the other player has won
             return self.lose
-        return self.tie  # game over is None - no one has won
+        return self.tie  # game over is None - no winner has been determined yet
 
-    # THIS CODE NEEDS TO BE CHANGED - however it just prints the game board pretty not needed for logic of game
+    # TODO: THIS CODE NEEDS TO BE CHANGED - however it just prints the game board pretty not needed for logic of game
     def pretty_state(self, state, escape=False):
         output = ''
         for j in range(self.width):
@@ -224,7 +223,7 @@ class Node(ConnectFour):
         try:
             indexOfNoneNode = list(self.childNodes.values()).index(None)  # cast to a list to use .index() method
             listOfChildNodeKeys = list(self.childNodes.keys())
-            action = listOfChildNodeKeys[indexOfNoneNode]  # make readable
+            action = listOfChildNodeKeys[indexOfNoneNode]
         except ValueError:
             pass  # do nothing
         newState = self.resultingState(self.state, action, self.player)

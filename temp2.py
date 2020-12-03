@@ -14,7 +14,7 @@ def play(human=True, n=10000):
 
     while not game.isTerminalState(state):
         print(game.pretty_state(state, False))
-        if human:
+        if False:
             prompt = 'Choose a move, choices are %s: ' % (game.actions(state),)
             success = False
             while not success:
