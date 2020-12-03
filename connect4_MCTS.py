@@ -1,8 +1,11 @@
 from math import sqrt, log
 from random import choice
 
-
 '''
+The first class is our ConnectFour class which defines the logic and rules
+of our ConnectFour game. It determines when the game has reached a terminal or
+winning state and creates the necessary attributes and methods needed to play the game.
+
 States are represented as a tuple of tuples. For our game we will have each tuple 
 have a max of self.height many integers. The tuples are column based - not row based!
 Examples of states 
@@ -10,12 +13,6 @@ Examples of states
 ((x), (), (), (), (), (), ()) - state after first move
 ((x), (o, o, o, o), (x, x, x), (), (), (), ()) - winner is o
 '''
-# Top level macros
-UP = 'UP'
-DOWN = 'DOWN'
-LEFT = 'LEFT'
-RIGHT = 'RIGHT'
-DIAGONAL = 'DIAGONAL'
 
 
 class ConnectFour:
@@ -27,14 +24,9 @@ class ConnectFour:
         self.connectNumber = 4
         self.win = 1
         self.lose = -1
-        self.draw = 0
+        self.tie = 0
 
-    # represents possible actions we can take
-    def actions(self, state):
-        possibleActions = [i for i in range(self.width) if len(state[i]) < self.height]
-        return tuple(possibleActions)
-
-    # creates and returns the resulting state
+    # creates and returns the resulting state based on taken action
     def resultingState(self, state, action, player):
         returnState = []
         for i, col in enumerate(state):
@@ -42,49 +34,52 @@ class ConnectFour:
                 returnState.append(col + (player,))
             else:
                 returnState.append(col)
-        return returnState
+        return tuple(returnState)
 
     # returns true and false based on if we reached a terminal state
     def isTerminalState(self, state):
         if all([len(col) == self.height for col in state]):
             return True  # board is full
-        if self.outcome(state, self.player1) != self.draw:
+        if self.gameOutcome(state, self.player1) != self.tie:
             return True  # there is a winner, so we're in a terminal state
         return False
 
+    # tuple returned represents the possible actions we can take
+    def actions(self, state):
+        possibleActions = [i for i in range(self.width) if len(state[i]) < self.height]
+        return tuple(possibleActions)
+
     # determines who next player is
-    def next_player(self, player):
+    def nextPlayer(self, player):
         if self.player1 == player:
             return self.player2
         return self.player1
 
-
-    # determines if players streak 'connection' has been broken
+    # determines if players streak (aka 'connection') has been broken
     def streakHandler(self, playerToCompare, p1_count, p2_count):
         if playerToCompare == self.player1:
-            p2_count = 0  # current player2 streak has been broken
+            p2_count = 0  # player2 streak has been broken
             p1_count += 1
         else:
-            p1_count = 0  # current player1 streak has been broken
+            p1_count = 0  # player1 streak has been broken
             p2_count += 1
         return p1_count, p2_count
 
-    # Determines if game has ended based on up and down connections
+    # Determines if game has ended based on up and down (vertical) connections
     def isGameOverUpDown(self, state):
-        # for up and down
         p1_count, p2_count = 0, 0
         for colIdx in range(self.width):  # for each column
             for i in range(self.height):  # for each row
                 try:
-                    valueAtCurPos = state[colIdx][i]
+                    playerAtCurPos = state[colIdx][i]
                 except IndexError:
-                    break  # no more elements
-                p1_count, p2_count = self.streakHandler(valueAtCurPos, p1_count, p2_count)
+                    break  # no more elements vertically
+                p1_count, p2_count = self.streakHandler(playerAtCurPos, p1_count, p2_count)
                 if p1_count == self.connectNumber:
                     return True, self.player1
                 if p2_count == self.connectNumber:
                     return True, self.player2
-        return False, None
+        return False, None  # no winner found
 
     # Determines if game has ended based on left and right connections
     def isGameOverLeftRight(self, state):
@@ -97,16 +92,16 @@ class ConnectFour:
                 except IndexError:
                     p1_count, p2_count = 0, 0  # reset count because there is no element here
                     continue  # move to next column
-                p1_count, p2_count = self.streakHandler(valueAtCurPos, p1_count, p2_count)
+                p1_count, p2_count = self.streakHandler(valueAtCurPos, p1_count, p2_count)  # update streaks
                 if p1_count == self.connectNumber:
                     return True, self.player1
                 if p2_count == self.connectNumber:
                     return True, self.player2
-        return False, None
+        return False, None  # no winner
 
     # Determines if game has ended based on diag connections
     def isGameOverDiag(self, state):
-        # diagonal check top left to bottom right
+        # diagonal check from the top left to the bottom right
         for row in range(3):
             for col in range(4):
                 try:
@@ -118,13 +113,13 @@ class ConnectFour:
                     continue  # not all indices we're looking at are defined
 
                 if state[row][col] == state[row + 1][col + 1] == state[row + 2][col + 2] == \
-                        state[row + 3][col + 3] == 1:
+                        state[row + 3][col + 3] == self.player1:
                     return True, self.player1
                 if state[row][col] == state[row + 1][col + 1] == state[row + 2][col + 2] == \
-                        state[row + 3][col + 3] == 2:
+                        state[row + 3][col + 3] == self.player2:
                     return True, self.player2
 
-        # diagonal check bottom left to top right
+        # diagonal check from the bottom left to the top right
         for row in range(5, 2, -1):
             for col in range(3):
                 try:
@@ -160,13 +155,13 @@ class ConnectFour:
         return None
 
     # determines current outcome of game, whether we're in a draw, win or lose state
-    def outcome(self, state, player):
+    def gameOutcome(self, state, player):
         gameOver = self.isGameOver(state)
         if gameOver == player:
             return self.win
         if gameOver is not None:  # the other player has won
             return self.lose
-        return self.draw  # game over is None - no one has won
+        return self.tie  # game over is None - no one has won
 
     # THIS CODE NEEDS TO BE CHANGED - however it just prints the game board pretty not needed for logic of game
     def pretty_state(self, state, escape=False):
@@ -195,7 +190,8 @@ class ConnectFour:
 
 
 '''
-This class is for using the MCTS algorithm on our connect4 class defined above
+This class is for using the Monte Carlo Tree Search algorithm and inherits our ConnectFour class defined above.
+It uses the methods and attributes defined in ConnectFour and applies the MCTS algorithm to them. 
 '''
 
 
@@ -208,14 +204,14 @@ class Node(ConnectFour):
         self.action = action
         self.state = state
         self.player = player
-        self.visits = 0  # needed for MCTS
-        self.value = 0.0  # needed for MCTS
+        self.visits = 0  # needed for MCTS algorithm
+        self.value = 0.0  # needed for MCTS algorithm
 
-    # returns the weight of the node - needed for MCTS
+    # returns the weight of the node based on visits - needed for MCTS
     def nodeWeightForVisits(self):
         return self.value / self.visits if self.visits > 0 else 0
 
-    # does the computation of the formula needed to determine the search weight
+    # computes the formula needed to determine the search weight
     def mctsWeightFormula(self, c):
         return self.nodeWeightForVisits() + c * sqrt(2 * log(self.parentNode.visits) / self.visits)
 
@@ -226,40 +222,42 @@ class Node(ConnectFour):
     # expands nodes that haven't been expanded yet, needed for expansion step in MCTS
     def expandNode(self):
         try:
-            action = list(self.childNodes.keys())[list(self.childNodes.values()).index(None)]  # make readable
+            indexOfNoneNode = list(self.childNodes.values()).index(None)  # cast to a list to use .index() method
+            listOfChildNodeKeys = list(self.childNodes.keys())
+            action = listOfChildNodeKeys[indexOfNoneNode]  # make readable
         except ValueError:
-            pass
+            pass  # do nothing
         newState = self.resultingState(self.state, action, self.player)
-        nextPlayer = self.next_player(self.player)  # might have an issue where the program doesn't know who the player is
+        nextPlayer = self.nextPlayer(self.player)
         childNode = Node(self, action, newState, nextPlayer)
         self.childNodes[action] = childNode  # map our action to a new childNode
         return childNode  # return expanded node
 
     # returns the value for the optimal child node, all nodes must be fully expanded.
-    def optimalChildNode(self, cVal=1/sqrt(2)):
+    def optimalChildNode(self, cVal=1 / sqrt(2)):
         returnValue = None
         if self.allChildrenExpanded():
-            returnValue = max(self.childNodes.values(), key=lambda n: n.mctsWeightFormula(cVal))
+            returnValue = max(self.childNodes.values(), key=lambda node: node.mctsWeightFormula(cVal))
         return returnValue
 
-    # returns the action of that must be taken in order to reach the optimal childNode
-    def optimalAction(self, cVal=1/sqrt(2)):
+    # returns the action taken by the optimal child node
+    def optimalAction(self, cVal=1 / sqrt(2)):
         return self.optimalChildNode(cVal).action
 
-    # this simulates the game from it's current state to a terminal state
+    # this simulates the game from it's current state to a terminal state, used for simulation step in MCTS
     def simulate(self):
         player = self.player
         state = self.state
         while not self.isTerminalState(state):  # while game isn't over
-            nextAction = choice(self.actions(state))
+            nextAction = choice(self.actions(state))  # choose random action
             state = self.resultingState(state, nextAction, player)
-            player = self.next_player(player)
-        return self.outcome(state, player)
+            player = self.nextPlayer(player)
+        return self.gameOutcome(state, player)
 
 
 # This function runs the Monte Carlo Tree Search algorithm using
-# all the methods defined in our class
-def monteCarloTreeSearch(connect4Game, state, player, numOfIterations):
+# the methods defined in our node class
+def monteCarloTreeSearch(connect4Game, state, player, numOfIterations=4500):
     rootNode = Node(None, None, state, player, connect4Game)
     for _ in range(numOfIterations):
         curNode = rootNode
@@ -267,12 +265,12 @@ def monteCarloTreeSearch(connect4Game, state, player, numOfIterations):
             if not curNode.allChildrenExpanded():
                 curNode = curNode.expandNode()  # if we haven't expanded yet, expand
                 break
-            curNode = curNode.optimalChildNode()
+            curNode = curNode.optimalChildNode()  # all nodes have been expanded, choose the optimal one
         # initial policy
-        delta = curNode.simulate()  # simulate playing game
+        deltaValue = curNode.simulate()  # simulate playing game
         # Do backpropagation
         while curNode is not None:
             curNode.visits += 1
-            curNode.value += delta
+            curNode.value += deltaValue
             curNode = curNode.parentNode
-    return rootNode.optimalAction(0)
+    return rootNode.optimalAction(0)  # take the optimal action

@@ -28,7 +28,7 @@ def play(human=True, n=10000):
                 except Exception:
                     pass
         else:
-            action = connect4_MCTS.monteCarloTreeSearch(game, state, player, n)
+            action = connect4_MCTS.monteCarloTreeSearch(game, state, player)
             state = game.resultingState(state, action, player)
 
         print()
@@ -40,14 +40,14 @@ def play(human=True, n=10000):
             break
 
         # Computer plays now
-        action = connect4_MCTS.monteCarloTreeSearch(game, state, computer, n)
+        action = connect4_MCTS.monteCarloTreeSearch(game, state, computer)
         state = game.resultingState(state, action, computer)
 
         print('Player 2 chose %s' % action)
 
     print(game.pretty_state(state, False))
     print()
-    outcome = game.outcome(state, player)
+    outcome = game.gameOutcome(state, player)
     if outcome == 1:
         print('Player 1 wins.')
     elif outcome == -1:
