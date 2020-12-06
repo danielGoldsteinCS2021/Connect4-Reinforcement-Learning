@@ -24,8 +24,8 @@ class Connect4:
         self.light_grey = (200,200,200)  
         self.boardColor = (50,131,168)
         self.playerColor = (245,245,66)
-        self.AIColor = (245,66,66) 
-        
+        self.AIColor = (245,66,66)
+
     '''
     Draws the board according to the input state.
     State is given in the form of a tuple of tuples.
