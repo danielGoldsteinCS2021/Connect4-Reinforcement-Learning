@@ -105,6 +105,25 @@ class ConnectFour:
             for row in range(6):
                 try:
                     temp = state[col][row]
+                    temp = state[col + 1][row - 1]
+                    temp = state[col + 2][row - 2]
+                    temp = state[col + 3][row - 3]
+                except IndexError:
+                    continue  # not all indices we're looking at are defined
+                if row - 3 < 0:
+                    continue
+                if state[col][row] == state[col + 1][row - 1] == state[col + 2][row - 2] == \
+                        state[col + 3][row - 3] == self.player1:
+                    return True, self.player1
+                if state[col][row] == state[col + 1][row - 1] == state[col + 2][row - 2] == \
+                        state[col + 3][row - 3] == self.player2:
+                    return True, self.player2
+
+        # diagonal check from the bottom left to the top right
+        for col in range(7):
+            for row in range(6):
+                try:
+                    temp = state[col][row]
                     temp = state[col + 1][row + 1]
                     temp = state[col + 2][row + 2]
                     temp = state[col + 3][row + 3]
@@ -115,23 +134,6 @@ class ConnectFour:
                     return True, self.player1
                 if state[col][row] == state[col + 1][row + 1] == state[col + 2][row + 2] == \
                         state[col + 3][row + 3] == self.player2:
-                    return True, self.player2
-
-        # diagonal check from the bottom left to the top right
-        for col in range(7, 0, -1):
-            for row in range(6):
-                try:
-                    temp = state[col][row]
-                    temp = state[col + 1][row - 1]
-                    temp = state[col + 2][row - 2]
-                    temp = state[col + 3][row - 3]
-                except IndexError:
-                    continue  # not all indices we're looking at are defined
-                if state[col][row] == state[col + 1][row - 1] == state[col + 2][row - 2] == \
-                        state[col + 3][row - 3] == self.player1:
-                    return True, self.player1
-                if state[col][row] == state[col + 1][row - 1] == state[col + 2][row - 2] == \
-                        state[col + 3][row - 3] == self.player2:
                     return True, self.player2
         return False, None
 
