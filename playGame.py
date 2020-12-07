@@ -9,6 +9,7 @@ class Connect4:
     def __init__(self, size):
         # Pygame initialization
         pygame.init()
+        pygame.font.init()
         self.clock = pygame.time.Clock()
         
         # Setting up main window
@@ -25,6 +26,9 @@ class Connect4:
         self.boardColor = (50,131,168)
         self.playerColor = (245,245,66)
         self.AIColor = (245,66,66)
+        
+        # Font
+        self.font = pygame.font.SysFont("monospace", 60)
 
     '''
     Draws the board according to the input state.
@@ -50,6 +54,15 @@ class Connect4:
                         pygame.draw.circle(self.screen, self.AIColor, (c*size + (size // 2),r*size + (2*size - size // 2)), int(circleSize // 2))
                     else:
                         pygame.draw.circle(self.screen, self.playerColor, (c*size + (size // 2),r*size + (2*size - size // 2)), int(circleSize // 2))
+       
+    '''
+    Pygame update
+    '''
+    def update(self, state):
+        self.screen.fill(self.bgColor)
+        self.drawBoard(state)
+        pygame.display.update()
+        self.clock.tick(60)
                         
     '''
     Contains the game loop and the running of the MCTS algorithm.
@@ -98,6 +111,15 @@ class Connect4:
                             playerTurn = False
             else:
                 # Computer turn
+                
+                # Computer waiting text
+                self.update(state)
+                text_surface = self.font.render("AI thinking...", True, self.light_grey)
+                text_rect = text_surface.get_rect(center=(self.screen_width/2, 50))
+                self.screen.blit(text_surface, text_rect)
+                pygame.display.update()
+                
+                # Computer action
                 action = connect4_MCTS.monteCarloTreeSearch(game, state, computer)
                 state = game.resultingState(state, action, computer)
                 print(game.pretty_state(state, False))
@@ -105,25 +127,33 @@ class Connect4:
 
             # Intermediate win check
             if game.isTerminalState(state):
+                # If the game is over, print winner and exit
+                self.update(state)
+                
+                # Game outcome:
+                if game.gameOutcome(state, player) == 1:
+                    # Player wins
+                    text_surface = self.font.render("Player 1 Wins!", True, self.light_grey)
+                    text_rect = text_surface.get_rect(center=(self.screen_width/2, 50))
+                    self.screen.blit(text_surface, text_rect)
+                elif game.gameOutcome(state, player) == -1:
+                    # Computer wins:
+                    text_surface = self.font.render("Computer Wins!", True, self.light_grey)
+                    text_rect = text_surface.get_rect(center=(self.screen_width/2, 50))
+                    self.screen.blit(text_surface, text_rect)
+                else:
+                    # Tie
+                    text_surface = self.font.render("It's a tie!", True, self.light_grey)
+                    text_rect = text_surface.get_rect(center=(self.screen_width/2, 50))
+                    self.screen.blit(text_surface, text_rect)
+                
+                # self.update(state)
+                pygame.display.update()
+                pygame.time.wait(3000)
                 break
-            
+                
             # Applying the changes to the pygame window
-            self.screen.fill(self.bgColor)
-            self.drawBoard(state)
-            pygame.display.update()
-            self.clock.tick(60)
-
-        # print(game.pretty_state(state, False))
-        # print()
-        outcome = game.gameOutcome(state, player)
-        if outcome == 1:
-            print('Player 1 wins.')
-        elif outcome == -1:
-            print('Player 2 wins.')
-        else:
-            print('Tie game.')
-            
-        # TODO: Address the issue with left diagonal win evaluation
+            self.update(state)
 
 # Driver code
 def main():
