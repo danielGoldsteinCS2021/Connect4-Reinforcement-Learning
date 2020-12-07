@@ -7,9 +7,9 @@ from enum import Enum
 ENUM used to specify difficulty.
 '''
 class Difficulty:
-    EASY = 100
-    MEDIUM = 1200
-    HARD = 4700
+    EASY = 60
+    MEDIUM = 1000
+    HARD = 5000
 
 '''
 Connect 4 class that is used to maintain information for the pygame display. It wraps the MCTS functionality.
@@ -128,7 +128,7 @@ class Connect4:
     '''
     Contains the game loop and the running of the MCTS algorithm.
     '''
-    def play(self, human=True, n=10000):
+    def play(self):
         # Init game settings
         width = 7
         initial = ((),) * width
@@ -224,32 +224,9 @@ class Connect4:
 
 # Driver code
 def main():
-    n = 1000
-    if len(sys.argv) > 1:
-        try:
-            n = int(sys.argv[1])
-        except ValueError:
-            pass
-
-    n = 1000
-    if '-n' in sys.argv:
-        try:
-            n = int(sys.argv[sys.argv.index('-n') + 1])
-        except:
-            pass
-
-    human = True
-    if '-c' in sys.argv:
-        human = False
-        
-    size = (6,7)
-        
+    size = (6, 7)
     connect4 = Connect4(size)
-    
-    print('Number of Sample Iterations: ' + str(n))
-    print('Human Player: ' + str(human))
-    print()
-    connect4.play(n=n, human=human)
+    connect4.play()
 
 
 if __name__ == "__main__":
