@@ -1,10 +1,16 @@
 import sys
 import connect4_MCTS
 import pygame
+from enum import Enum
 
 '''
 Connect 4 class that is used to maintain information for the pygame display. It wraps the MCTS functionality.
 '''
+class Difficulty(Enum):
+    EASY = 1
+    MEDIUM = 2
+    HARD = 3
+
 class Connect4:
     def __init__(self, size):
         # Pygame initialization
@@ -17,18 +23,29 @@ class Connect4:
         self.size = size
         self.screen_height = self.square_size * (size[0] + 1)
         self.screen_width = self.square_size * (size[1])
+        self.button_width = 75
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         pygame.display.set_caption("Connect 4")
         
         # Colors that are used throughout the window.
         self.bgColor = pygame.Color('grey12')
         self.light_grey = (200,200,200)  
+        self.dark_grey = (150,150,150)
         self.boardColor = (50,131,168)
         self.playerColor = (245,245,66)
         self.AIColor = (245,66,66)
         
         # Font
-        self.font = pygame.font.SysFont("monospace", 60)
+        self.font = pygame.font.SysFont("monospace", 30)
+        self.smallFont = pygame.font.SysFont("monospace", 20)
+        
+        # Difficulty buttons
+        self.hardButton = pygame.Rect(self.screen_width - self.button_width,25,self.button_width - 5,50)
+        self.mediumButton = pygame.Rect(self.screen_width - (2 * self.button_width),25,self.button_width - 5,50)
+        self.easyButton = pygame.Rect(self.screen_width - (3 * self.button_width),25,self.button_width - 5,50)
+        
+        # Initial difficulty:
+        self.difficulty = Difficulty.EASY;
 
     '''
     Draws the board according to the input state.
@@ -54,13 +71,43 @@ class Connect4:
                         pygame.draw.circle(self.screen, self.AIColor, (c*size + (size // 2),r*size + (2*size - size // 2)), int(circleSize // 2))
                     else:
                         pygame.draw.circle(self.screen, self.playerColor, (c*size + (size // 2),r*size + (2*size - size // 2)), int(circleSize // 2))
+     
+    '''
+    Draws buttons and button text
+    '''
+    def drawButtons(self):
+        if self.difficulty == Difficulty.EASY:
+            pygame.draw.rect(self.screen, self.dark_grey, self.easyButton)
+            pygame.draw.rect(self.screen, self.light_grey, self.mediumButton)
+            pygame.draw.rect(self.screen, self.light_grey, self.hardButton)
+        elif self.difficulty == Difficulty.MEDIUM:
+            pygame.draw.rect(self.screen, self.light_grey, self.easyButton)
+            pygame.draw.rect(self.screen, self.dark_grey, self.mediumButton)
+            pygame.draw.rect(self.screen, self.light_grey, self.hardButton)
+        else:
+            pygame.draw.rect(self.screen, self.light_grey, self.easyButton)
+            pygame.draw.rect(self.screen, self.light_grey, self.mediumButton)
+            pygame.draw.rect(self.screen, self.dark_grey, self.hardButton)
+            
+        # Text
+        easyText = self.smallFont.render("Easy", True, (0,0,0))
+        easy_text_rect = easyText.get_rect(center=self.easyButton.center)
+        mediumText = self.smallFont.render("Med", True, (0,0,0))
+        medium_text_rect = mediumText.get_rect(center=self.mediumButton.center)
+        hardText = self.smallFont.render("Hard", True, (0,0,0))
+        hard_text_rect = hardText.get_rect(center=self.hardButton.center)
+        
+        self.screen.blit(easyText, easy_text_rect)
+        self.screen.blit(mediumText, medium_text_rect)
+        self.screen.blit(hardText, hard_text_rect)
        
     '''
-    Pygame update
+    Pygame update: Refresh
     '''
     def update(self, state):
         self.screen.fill(self.bgColor)
         self.drawBoard(state)
+        self.drawButtons()
         pygame.display.update()
         self.clock.tick(60)
         
@@ -70,8 +117,9 @@ class Connect4:
     def playerUpdate(self, state):
         self.screen.fill(self.bgColor)
         self.drawBoard(state)
+        self.drawButtons()
         text_surface = self.font.render("Your move...", True, self.light_grey)
-        text_rect = text_surface.get_rect(center=(self.screen_width/2, 50))
+        text_rect = text_surface.get_rect(center=(self.screen_width/4, 50))
         self.screen.blit(text_surface, text_rect)
         pygame.display.update()
                         
@@ -100,34 +148,50 @@ class Connect4:
                     if event.type == pygame.QUIT:
                         sys.exit()
                     # Event: Click
+                    '''
+                    DAN LOOK HERE TO ADD FUNCTIONALITY
+                    
+                    EACH HANDLES A CLICK OF THE BUTTON, UPDATES THE SELF.DIFFICULTY PROPERTY (an enum)
+                    '''
                     if event.type == pygame.MOUSEBUTTONDOWN:
+                        if pygame.Rect.collidepoint(self.easyButton, pygame.mouse.get_pos()):
+                            print("Clicked on easy button")
+                            self.difficulty = Difficulty.EASY
+                        if pygame.Rect.collidepoint(self.mediumButton, pygame.mouse.get_pos()):
+                            print("Clicked on medium button")
+                            self.difficulty = Difficulty.MEDIUM 
+                        if pygame.Rect.collidepoint(self.hardButton, pygame.mouse.get_pos()):
+                            print("Clicked on hard button")
+                            self.difficulty = Difficulty.HARD
+                            
                         # While a legal action has not been taken:
-                        success = False
-                        while not success:
-                            # Getting the choice based on the click ->  Turning it into a valid choice
-                            choice = event.pos[0] // self.square_size
-                            try:
-                                action = int(choice)
-                                if action not in game.actions(state):
-                                    print("Illegal move!")
-                                    break
-                                # Player made a legal action, take it
-                                state = game.resultingState(state, action, player)
-                                success = True
-                            except ValueError:
-                                pass
-                            except Exception:
-                                pass
-                        if success:
-                            print(game.pretty_state(state, False))
-                            playerTurn = False
+                        if event.pos[1] >= self.square_size:
+                            success = False
+                            while not success:
+                                # Getting the choice based on the click ->  Turning it into a valid choice
+                                choice = event.pos[0] // self.square_size
+                                try:
+                                    action = int(choice)
+                                    if action not in game.actions(state):
+                                        print("Illegal move!")
+                                        break
+                                    # Player made a legal action, take it
+                                    state = game.resultingState(state, action, player)
+                                    success = True
+                                except ValueError:
+                                    pass
+                                except Exception:
+                                    pass
+                            if success:
+                                print(game.pretty_state(state, False))
+                                playerTurn = False
             else:
                 # Computer turn
                 
                 # Computer waiting text
                 self.update(state)
                 text_surface = self.font.render("AI thinking...", True, self.light_grey)
-                text_rect = text_surface.get_rect(center=(self.screen_width/2, 50))
+                text_rect = text_surface.get_rect(center=(self.screen_width/4, 50))
                 self.screen.blit(text_surface, text_rect)
                 pygame.display.update()
                 # self.update(state)
