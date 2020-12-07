@@ -6,10 +6,10 @@ from enum import Enum
 '''
 Connect 4 class that is used to maintain information for the pygame display. It wraps the MCTS functionality.
 '''
-class Difficulty(Enum):
-    EASY = 1
-    MEDIUM = 2
-    HARD = 3
+class Difficulty:
+    EASY = 100
+    MEDIUM = 1200
+    HARD = 4700
 
 class Connect4:
     def __init__(self, size):
@@ -148,20 +148,12 @@ class Connect4:
                     if event.type == pygame.QUIT:
                         sys.exit()
                     # Event: Click
-                    '''
-                    DAN LOOK HERE TO ADD FUNCTIONALITY
-                    
-                    EACH HANDLES A CLICK OF THE BUTTON, UPDATES THE SELF.DIFFICULTY PROPERTY (an enum)
-                    '''
                     if event.type == pygame.MOUSEBUTTONDOWN:
                         if pygame.Rect.collidepoint(self.easyButton, pygame.mouse.get_pos()):
-                            print("Clicked on easy button")
                             self.difficulty = Difficulty.EASY
                         if pygame.Rect.collidepoint(self.mediumButton, pygame.mouse.get_pos()):
-                            print("Clicked on medium button")
-                            self.difficulty = Difficulty.MEDIUM 
+                            self.difficulty = Difficulty.MEDIUM
                         if pygame.Rect.collidepoint(self.hardButton, pygame.mouse.get_pos()):
-                            print("Clicked on hard button")
                             self.difficulty = Difficulty.HARD
                             
                         # While a legal action has not been taken:
@@ -197,7 +189,7 @@ class Connect4:
                 # self.update(state)
                 
                 # Computer action
-                action = connect4_MCTS.monteCarloTreeSearch(game, state, computer)
+                action = connect4_MCTS.monteCarloTreeSearch(game, state, computer, self.difficulty)
                 state = game.resultingState(state, action, computer)
                 print(game.pretty_state(state, False))
                 playerTurn = True
