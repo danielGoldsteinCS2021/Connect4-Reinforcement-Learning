@@ -63,6 +63,17 @@ class Connect4:
         self.drawBoard(state)
         pygame.display.update()
         self.clock.tick(60)
+        
+    '''
+    Player-specific update, draws "Player turn" to the window
+    '''
+    def playerUpdate(self, state):
+        self.screen.fill(self.bgColor)
+        self.drawBoard(state)
+        text_surface = self.font.render("Your move...", True, self.light_grey)
+        text_rect = text_surface.get_rect(center=(self.screen_width/2, 50))
+        self.screen.blit(text_surface, text_rect)
+        pygame.display.update()
                         
     '''
     Contains the game loop and the running of the MCTS algorithm.
@@ -82,6 +93,7 @@ class Connect4:
         while not game.isTerminalState(state):
             # Human player action
             if playerTurn:
+                self.playerUpdate(state)
                 # Event handling
                 for event in pygame.event.get():
                     # Event: Quit
@@ -118,6 +130,7 @@ class Connect4:
                 text_rect = text_surface.get_rect(center=(self.screen_width/2, 50))
                 self.screen.blit(text_surface, text_rect)
                 pygame.display.update()
+                # self.update(state)
                 
                 # Computer action
                 action = connect4_MCTS.monteCarloTreeSearch(game, state, computer)
@@ -153,7 +166,7 @@ class Connect4:
                 break
                 
             # Applying the changes to the pygame window
-            self.update(state)
+            # self.update(state)
 
 # Driver code
 def main():
