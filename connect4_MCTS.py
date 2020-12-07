@@ -101,39 +101,39 @@ class ConnectFour:
     # Determines if game has ended based on diag connections
     def isGameOverDiag(self, state):
         # diagonal check from the top left to the bottom right
-        for row in range(3):
-            for col in range(4):
+        for col in range(7):
+            for row in range(6):
                 try:
-                    temp = state[row][col]
-                    temp = state[row + 1][col + 1]
-                    temp = state[row + 2][col + 2]
-                    temp = state[row + 3][col + 3]
+                    temp = state[col][row]
+                    temp = state[col + 1][row + 1]
+                    temp = state[col + 2][row + 2]
+                    temp = state[col + 3][row + 3]
                 except IndexError:
                     continue  # not all indices we're looking at are defined
-
-                if state[row][col] == state[row + 1][col + 1] == state[row + 2][col + 2] == \
-                        state[row + 3][col + 3] == self.player1:
+                print(state[col][row], state[col+1][row+1], state[col+2][row+2], state[col+3][row+3])
+                if state[col][row] == state[col + 1][row + 1] == state[col + 2][row + 2] == \
+                        state[col + 3][row + 3] == self.player1:
                     return True, self.player1
-                if state[row][col] == state[row + 1][col + 1] == state[row + 2][col + 2] == \
-                        state[row + 3][col + 3] == self.player2:
+                if state[col][row] == state[col + 1][row + 1] == state[col + 2][row + 2] == \
+                        state[col + 3][row + 3] == self.player2:
                     return True, self.player2
 
         # diagonal check from the bottom left to the top right
-        for row in range(5, 2, -1):
-            for col in range(3):
+        for col in range(7, 0, -1):
+            for row in range(6):
                 try:
-                    temp = state[row][col]
-                    temp = state[row - 1][col + 1]
-                    temp = state[row - 2][col + 2]
-                    temp = state[row - 3][col + 3]
+                    temp = state[col][row]
+                    temp = state[col + 1][row - 1]
+                    temp = state[col + 2][row - 2]
+                    temp = state[col + 3][row - 3]
                 except IndexError:
                     continue  # not all indices we're looking at are defined
-
-                if state[row][col] == state[row - 1][col + 1] == state[row - 2][col + 2] == \
-                        state[row - 3][col + 3] == self.player1:
+                print(state[col][row], state[col + 1][row - 1], state[col + 2][row - 2], state[col + 3][row - 3])
+                if state[col][row] == state[col + 1][row - 1] == state[col + 2][row - 2] == \
+                        state[col + 3][row - 3] == self.player1:
                     return True, self.player1
-                if state[row][col] == state[row - 1][col + 1] == state[row - 2][col + 2] == \
-                        state[row - 3][col + 3] == self.player2:
+                if state[col][row] == state[col + 1][row - 1] == state[col + 2][row - 2] == \
+                        state[col + 3][row - 3] == self.player2:
                     return True, self.player2
         return False, None
 
