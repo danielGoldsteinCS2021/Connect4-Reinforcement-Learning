@@ -110,7 +110,6 @@ class ConnectFour:
                     temp = state[col + 3][row + 3]
                 except IndexError:
                     continue  # not all indices we're looking at are defined
-                print(state[col][row], state[col+1][row+1], state[col+2][row+2], state[col+3][row+3])
                 if state[col][row] == state[col + 1][row + 1] == state[col + 2][row + 2] == \
                         state[col + 3][row + 3] == self.player1:
                     return True, self.player1
@@ -128,7 +127,6 @@ class ConnectFour:
                     temp = state[col + 3][row - 3]
                 except IndexError:
                     continue  # not all indices we're looking at are defined
-                print(state[col][row], state[col + 1][row - 1], state[col + 2][row - 2], state[col + 3][row - 3])
                 if state[col][row] == state[col + 1][row - 1] == state[col + 2][row - 2] == \
                         state[col + 3][row - 3] == self.player1:
                     return True, self.player1
