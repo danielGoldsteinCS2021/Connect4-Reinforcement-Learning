@@ -4,13 +4,16 @@ import pygame
 from enum import Enum
 
 '''
-Connect 4 class that is used to maintain information for the pygame display. It wraps the MCTS functionality.
+ENUM used to specify difficulty.
 '''
 class Difficulty:
     EASY = 100
     MEDIUM = 1200
     HARD = 4700
 
+'''
+Connect 4 class that is used to maintain information for the pygame display. It wraps the MCTS functionality.
+'''
 class Connect4:
     def __init__(self, size):
         # Pygame initialization
@@ -107,7 +110,6 @@ class Connect4:
     def update(self, state):
         self.screen.fill(self.bgColor)
         self.drawBoard(state)
-        self.drawButtons()
         pygame.display.update()
         self.clock.tick(60)
         
@@ -175,13 +177,13 @@ class Connect4:
                                 except Exception:
                                     pass
                             if success:
-                                print(game.pretty_state(state, False))
                                 playerTurn = False
             else:
                 # Computer turn
                 
                 # Computer waiting text
                 self.update(state)
+                self.drawButtons()
                 text_surface = self.font.render("AI thinking...", True, self.light_grey)
                 text_rect = text_surface.get_rect(center=(self.screen_width/4, 50))
                 self.screen.blit(text_surface, text_rect)
@@ -191,7 +193,6 @@ class Connect4:
                 # Computer action
                 action = connect4_MCTS.monteCarloTreeSearch(game, state, computer, self.difficulty)
                 state = game.resultingState(state, action, computer)
-                print(game.pretty_state(state, False))
                 playerTurn = True
 
             # Intermediate win check
@@ -220,9 +221,6 @@ class Connect4:
                 pygame.display.update()
                 pygame.time.wait(3000)
                 break
-                
-            # Applying the changes to the pygame window
-            # self.update(state)
 
 # Driver code
 def main():

@@ -162,32 +162,6 @@ class ConnectFour:
             return self.lose
         return self.tie  # game over is None - no winner has been determined yet
 
-    # TODO: THIS CODE NEEDS TO BE CHANGED - however it just prints the game board pretty not needed for logic of game
-    def pretty_state(self, state, escape=False):
-        output = ''
-        for j in range(self.width):
-            output += ' ' + str(j)
-        output += ' '
-        if escape:
-            output += '\\n'
-        else:
-            output += '\n'
-        i = self.height - 1
-        while i >= 0:
-            for column in state:
-                if len(column) > i:
-                    output += '|' + str(column[i])
-                else:
-                    output += '| '
-            output += '|'
-            if escape:
-                output += '\\n'
-            else:
-                output += '\n'
-            i -= 1
-        return output
-
-
 '''
 This class is for using the Monte Carlo Tree Search algorithm and inherits our ConnectFour class defined above.
 It uses the methods and attributes defined in ConnectFour and applies the MCTS algorithm to them. 
