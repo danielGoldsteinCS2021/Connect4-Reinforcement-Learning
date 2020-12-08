@@ -1,6 +1,10 @@
 import pytest
 import connect4_MCTS
 
+'''
+No need to view this file it just creates test cases. Included for clarity sake. 
+'''
+
 class TestConnect4:
     def setUp(self):
         self.game = connect4_MCTS.ConnectFour()
