@@ -1,19 +1,17 @@
 import sys
 import connect4_MCTS
 import pygame
-from enum import Enum
 
-'''
-ENUM used to specify difficulty.
-'''
+
 class Difficulty:
     EASY = 60
     MEDIUM = 1000
     HARD = 5000
 
-'''
-Connect 4 class that is used to maintain information for the pygame display. It wraps the MCTS functionality.
-'''
+
+# Connect 4 class that is used to maintain information for the pygame display. It wraps the MCTS functionality.
+
+
 class Connect4:
     def __init__(self, size):
         # Pygame initialization
